@@ -41,6 +41,138 @@ trait Printable[A] {
 }
 
 ```
+
+## Pull 
+  The output values of a pull are emitted not one by one, but in chunks.
+  A `Chunk` is an immutable sequence with constant-time indexed lookup. For example,a pull `p: Pull[F, Byte, R]` internally operates and emits `Chunk[Byte]` values, which can wrap unboxed byte arrays -- avoiding boxing/unboxing costs.The `Pull` API provides mechanisms for working at both the chunk level and the individual element level. Generally, working at the chunk level will result in better performance but at the cost of more complex implementations
+
+  A pull only emits non-empty chunks.
+
+  However, chunks are not merely an operational matter of efficiency. Each pull is emitted from a chunk atomically, which is to say, any errors or interruptions in a pull can only happen between chunks, not within a chunk. For instance, if creating a new chunk of values fails (raises an uncaught exception) while creating an intermediate value, then it fails to create the entire chunk and previous values are discarded.
+
+```scala
+Pull[F[_],+O,+R]
+```
+- Reads values from one or more streams
+- returns a result of type R
+- and produces a `Stream[F,O]` when calling `stream` method
+
+
+
+In Haskell `uncons` is used to Decompose a list into its head and tail.
+If the list is empty, returns Nothing.
+If the list is non-empty, returns Just (x, xs), where x is the head of the list and xs its tail.
+ ```scala
+ uncons []
+ //Nothing
+
+ uncons [1]
+ //Just (1,[])
+ uncons [1, 2, 3]
+ //Just (1,[2,3])
+
+ ```
+
+the library implements the Stream type functions using the Pull type 
+
+The `Pull[F[_], O, R]` type represents a program that can pull output values of type `O` while computing a result of type `R` while using an effect of type `F`
+
+The result `R` represents the information available after the emission of the element of type `O` that should be used to emit the next value of a stream. For this reason, using `Pull` directly means to develop recursive programs
+
+The `Pull` type represents a stream as a head and a tail, much like we can describe a list. The element of type `O` emitted by the `Pull` represents the head. However, since a stream is a possible infinite data structure, we cannot express it with a finite one. So, we return a type `R`, which is all the information that we need to compute the tail of the stream
+We can convert a `Pull` having the `R` type variable bound to Unit directly to a `Stream` by using the `stream` method
+
+ A `Pull` that returns Unit is like a List with a head and empty tail.
+ Unlike the `Stream` type, which defines a monad instance on the type variable `O`, a `Pull` forms a monad instance on `R`. If we think, it’s logical: All we want is to concatenate the information that allows us to compute the tail of the stream.
+
+ we can convert a `Stream` into a `Pull` using the `echo` method:
+```scala
+Stream(7).pull.echo// convert a Stream to a Pull
+```
+ Another way to convert a `Stream` into a `Pull` is to use the `uncons` function, which returns a `Pull` pulling a tuple containing the head chunk of the stream and its tail
+
+
+
+```scala
+ implicit final class StreamPullOps[F[_], O](private val self: Pull[F, O, Unit]) extends AnyVal {
+private[fs2] def uncons: Pull[F, Nothing, Option[(Chunk[O], Pull[F, O, Unit])]] =
+      self match {
+        case Succeeded(_)    => Succeeded(None)
+        case Output(vals)    => Succeeded(Some(vals -> unit))
+        case ff: Fail        => ff
+        case it: Interrupted => it
+        case _               => Uncons(self)
+      }
+
+  }
+
+final class ToPull[F[_], O] private[Stream] (
+      private val self: Stream[F, O]
+  ) extends AnyVal {
+
+ def uncons: Pull[F, Nothing, Option[(Chunk[O], Stream[F, O])]] =
+      self.underlying.uncons.map(_.map { case (hd, tl) => (hd, tl.streamNoScope) })
+
+def echo1: Pull[F, O, Option[Stream[F, O]]] =
+      uncons.flatMap {
+        case None => Pull.pure(None)
+        case Some((hd, tl)) =>
+          val (pre, post) = hd.splitAt(1)
+          Pull.output(pre).as(Some(tl.cons(post)))
+      }
+
+ /** Reads the next available chunk from the input and emits it to the output. */
+  def echoChunk: Pull[F, O, Option[Stream[F, O]]] =
+      uncons.flatMap {
+        case None           => Pull.pure(None)
+        case Some((hd, tl)) => Pull.output(hd).as(Some(tl))
+      }
+  } 
+
+  implicit final class StreamPullOps[F[_], O](private val self: Pull[F, O, Unit]) extends AnyVal {
+
+  /** `Pull` transformation that takes the given stream (pull), unrolls it until it either:
+    * - Reaches the end of the stream, and returns None; or
+     * - Reaches an Output action, and emits Some pair with
+     *   the non-empty chunk of values and the rest of the stream.
+     */
+  private[fs2] def uncons: Pull[F, Nothing, Option[(Chunk[O], Pull[F, O, Unit])]] =
+      self match {
+        case Succeeded(_)    => Succeeded(None)
+        case Output(vals)    => Succeeded(Some(vals -> unit))
+        case ff: Fail        => ff
+        case it: Interrupted => it
+        case _               => Uncons(self)
+      } 
+  }
+```
+
+
+```scala
+
+private[fs2] def uncons: Pull[F, Nothing, Option[(Chunk[O], Pull[F, O, Unit])]] =
+      self match {
+        case Succeeded(_)    => Succeeded(None)
+        case Output(vals)    => Succeeded(Some(vals -> unit))
+        case ff: Fail        => ff
+        case it: Interrupted => it
+        case _               => Uncons(self)
+      } 
+  //we move from the above in StreamPullOps to the below in ToPull 
+ def uncons: Pull[F, Nothing, Option[(Chunk[O], Stream[F, O])]] =
+      self.underlying.uncons.map(_.map { case (hd, tl) => (hd, tl.streamNoScope) })
+
+
+//return type `Pull[F, Nothing, Option[(Chunk[O], Pull[F, O, Unit])]]` to `Pull[F, Nothing, Option[(Chunk[O], Stream[F, O])]]`
+
+// Nothing as ouput as it cannot emit any value
+```
+The returned value is an `Option` because the `Stream` may be empty: If there is no more value in the original `Stream`, we will have a `None`. Otherwise, we will have the head of the stream as a `Chunk` and a `Stream` representing the tail of the original stream.
+
+Due to the structure of the type, the functions implemented using the `Pull` type are often recursive.
+
+ A critical feature of running two streams through the concurrently method is that the second stream halts when the first stream is finished
+ 
 [system-from-scratch-in-scala-3](https://chollinger.com/blog/2023/06/building-a-functional-effectful-distributed-system-from-scratch-in-scala-3-just-to-avoid-leetcode-part-1/)
 [fold](https://www.baeldung.com/scala/folding-lists)
 
@@ -49,6 +181,11 @@ trait Printable[A] {
 http://www.gibbons.org.uk/scala3-fs2-july-2021
 
 https://github.com/PendaRed/scala3-fs2/tree/main/src/main/scala/com/jgibbons/fs2/c
+
+[free monad-haskell](https://serokell.io/blog/introduction-to-free-monads)
+
+
+
 
 
 

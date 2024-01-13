@@ -109,6 +109,7 @@ object CSVProcessing extends IOApp.Simple {
       .toList
 
   }
-  override def run: IO[Unit] = readLegoSetStreams("sets.csv", _.year > 1980, 1000)
-    .flatMap(IO.println(_))
+  override def run: IO[Unit] =
+    readLegoSetStreams("sets.csv", _.year > 1980, 1000)
+      .flatMap(IO.println(_))
 }

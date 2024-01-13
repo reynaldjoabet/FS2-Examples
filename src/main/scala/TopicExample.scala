@@ -29,7 +29,7 @@ object TopicExample extends IOApp {
   // Stream.resource()
 
   override def run(args: List[String]): IO[ExitCode] = stream2
-    .metered(2.seconds)
+    // .metered(2.seconds)
     // .buffer(3)
     .broadcastThrough(consumer1, consumer2, consumer3)
     .compile

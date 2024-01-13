@@ -1,4 +1,3 @@
-
 //> using dep "co.fs2::fs2-core:3.9.2"
 
 import scala.concurrent.duration._
@@ -12,15 +11,22 @@ sealed trait Event
 case class Text(value: String) extends Event
 case object Quit extends Event
 
-class EventService[F[_]](eventsTopic: Topic[F, Event], interrupter: SignallingRef[F, Boolean])(
-  implicit F: Temporal[F], console: Console[F]
+class EventService[F[_]](
+    eventsTopic: Topic[F, Event],
+    interrupter: SignallingRef[F, Boolean]
+)(implicit
+    F: Temporal[F],
+    console: Console[F]
 ) {
 
   // Publishing 15 text events, then single Quit event, and still publishing text events
   def startPublisher: Stream[F, Unit] = {
     val textEvents =
-      Stream.awakeEvery[F](1.second)
-        .zipRight(Stream.repeatEval(Clock[F].realTime.map(t => Text(t.toString))))
+      Stream
+        .awakeEvery[F](1.second)
+        .zipRight(
+          Stream.repeatEval(Clock[F].realTime.map(t => Text(t.toString)))
+        )
 
     val quitEvent = Stream.eval(eventsTopic.publish1(Quit).as(Quit))
 
@@ -34,9 +40,9 @@ class EventService[F[_]](eventsTopic: Topic[F, Event], interrupter: SignallingRe
     def processEvent(subscriberNumber: Int): Pipe[F, Event, Nothing] =
       _.foreach {
         case e @ Text(_) =>
-           console.println(s"Subscriber #$subscriberNumber processing event: $e")
-       case Quit => interrupter.set(true)
-     }
+          console.println(s"Subscriber #$subscriberNumber processing event: $e")
+        case Quit => interrupter.set(true)
+      }
 
     val events: Stream[F, Event] =
       eventsTopic.subscribe(10)

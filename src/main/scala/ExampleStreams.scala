@@ -18,11 +18,10 @@ object ExampleStreams extends IOApp {
     .covary[IO]
     .evalMap(IO.println)
   override def run(args: List[String]): IO[ExitCode] =
-    fibonacciStream.compile
-    .drain.as(ExitCode.Success)
-    //consumerImpl.subscribe(
-     // iterableStream
-    //) !> topic !> awakeEvery !> (evalParStream).as(ExitCode.Success)
+    fibonacciStream.compile.drain.as(ExitCode.Success)
+  // consumerImpl.subscribe(
+  // iterableStream
+  // ) !> topic !> awakeEvery !> (evalParStream).as(ExitCode.Success)
   // killSwitch.as(ExitCode.Success)
   // stream1.compile.drain.as(ExitCode.Success)
 
@@ -143,8 +142,12 @@ object ExampleStreams extends IOApp {
   }
 
 ////val f=Stream.emits(1 to 300).ev
-val fibonacciStream= Stream.unfold((0, 1)) { case (a, b) =>
+  val fibonacciStream = Stream
+    .unfold((0, 1)) { case (a, b) =>
       val next = a + b
       Some((next, (b, next)))
-    }.covary[IO].take(13).evalTap(IO.println)
+    }
+    .covary[IO]
+    .take(13)
+    .evalTap(IO.println)
 }

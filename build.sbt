@@ -1,12 +1,10 @@
-
 // The simplest possible sbt build file is just one line:
 
 scalaVersion := "2.13.10"
 
-
 name := "FS2-EXAMPLES"
 version := "1.0"
-val fs2Version="3.9.2"
+val fs2Version = "3.9.2"
 libraryDependencies += "co.fs2" %% "fs2-core" % fs2Version
 
 libraryDependencies += "co.fs2" %% "fs2-io" % fs2Version
@@ -17,4 +15,3 @@ fork in run := true
 //“enables a compiler flag (partial unification) that is required by cats to infer types correctly”
 
 scalacOptions += "-Ypartial-unification"
-
