@@ -13,7 +13,7 @@ import fs2.concurrent.Topic
 
 object ExampleStreams extends IOApp {
 
-  val stream1 = Stream
+  val stream1                                        = Stream
     .emits(1 to 100000)
     .covary[IO]
     .evalMap(IO.println)
@@ -25,7 +25,7 @@ object ExampleStreams extends IOApp {
   // killSwitch.as(ExitCode.Success)
   // stream1.compile.drain.as(ExitCode.Success)
 
-  val unfold = Stream
+  val unfold        = Stream
     .unfold(0)(seed => Some(seed, seed + 1))
     .evalTap(IO.println)
 //batching

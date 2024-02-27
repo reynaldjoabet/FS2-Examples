@@ -39,13 +39,13 @@ object CSVProcessing extends IOApp.Simple {
       predicate: LegoSet => Boolean,
       limit: Int
   ): List[LegoSet] = {
-    var reader: BufferedReader = null
+    var reader: BufferedReader        = null
     val legoSets: ListBuffer[LegoSet] = ListBuffer.empty
     try {
       reader = new BufferedReader(new FileReader(filename))
 
       var line: String = reader.readLine()
-      var count = 0
+      var count        = 0
       while (line != null && count < limit) {
         val legoSet = parseLegoSet(line)
         legoSet.filter(predicate).foreach { lego =>
@@ -109,7 +109,7 @@ object CSVProcessing extends IOApp.Simple {
       .toList
 
   }
-  override def run: IO[Unit] =
+  override def run: IO[Unit]                              =
     readLegoSetStreams("sets.csv", _.year > 1980, 1000)
       .flatMap(IO.println(_))
 }

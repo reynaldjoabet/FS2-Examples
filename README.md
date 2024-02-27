@@ -172,7 +172,23 @@ The returned value is an `Option` because the `Stream` may be empty: If there is
 Due to the structure of the type, the functions implemented using the `Pull` type are often recursive.
 
  A critical feature of running two streams through the concurrently method is that the second stream halts when the first stream is finished
- 
+
+ We can output multiple elements by composing pulls together using the `>>` function, spoken as ‘then’.
+
+ The `Stream[F, O]` datatype has two type parameters: an effect `F` and an output type `O`. On the other hand `Pull[F, O, R]` has three. What is that extra `R` type for?
+
+Unlike streams, pulls have a result.
+
+A pull can only be represented as a stream if it has a result of Unit — meaning its result can be discarded.
+
+`Pull[F, O, R]` is a functor over the type `R`, representing the result of the computation.
+
+`Stream[F, A]` is a stream with effects in `F` and elements in `A`. `Pull[F, A, R]` is a pull with effects in `F`, elements in `A`, and a return value in `R`. Streams are implemented in terms of Pull[F, A, Unit] (more or less; handwaving some details). `Streams` are monads in `A`, meaning they have `flatMap(f: A => Stream[F, B]): Stream[F, B]`. `Pull` is a monad in `R`, so it has `flatMap(f: R => Pull[F, A, R2]): Pull[F, A, R2]`
+
+
+
+![Alt text](image.png)
+[Pull](https://gist.io/@daenyth/024c5584da01acabe7a435c8a53c4f3c)
 [system-from-scratch-in-scala-3](https://chollinger.com/blog/2023/06/building-a-functional-effectful-distributed-system-from-scratch-in-scala-3-just-to-avoid-leetcode-part-1/)
 [fold](https://www.baeldung.com/scala/folding-lists)
 

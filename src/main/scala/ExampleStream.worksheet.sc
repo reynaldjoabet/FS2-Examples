@@ -6,11 +6,11 @@ import cats.effect.IO
 import fs2._
 import scala.concurrent.duration._
 val unfold1 = fs2.Stream.unfold(1)(x => Some(x -> (x - 1)))
-val unfold = fs2.Stream.unfold(0)(i => if (i < 20) Some(i -> (i + 1)) else None)
+val unfold  = fs2.Stream.unfold(0)(i => if (i < 20) Some(i -> (i + 1)) else None)
 
 unfold.toList
 
-val emit = fs2.Stream.emit(12)
+val emit  = fs2.Stream.emit(12)
 emit.toList
 val empty = fs2.Stream.empty
 empty.toList
@@ -86,7 +86,7 @@ def unNone1[A](stream: fs2.Stream[Pure, Option[A]]): fs2.Stream[Pure, A] =
 
 def unNone2[A](stream: fs2.Stream[Pure, Option[A]]): fs2.Stream[Pure, A] =
   stream.flatMap(opt => fs2.Stream.fromOption(opt))
-val k = fs2.Stream.unfold(Some(12))(num => Some(num, Some(num.get * 2)))
+val k                                                                    = fs2.Stream.unfold(Some(12))(num => Some(num, Some(num.get * 2)))
 unNone(k).take(6).toList
 
 unNone1(fs2.Stream(Some(12), None, None, Some(2), None)).toList
@@ -105,7 +105,7 @@ Future.sequence(List(h))
 
 (Stream(1, 2, 3) ++ Stream(4, 5, 6)).toList
 
-val list = (1 to 10).toList.partition(_ % 2 == 0)
+val list  = (1 to 10).toList.partition(_ % 2 == 0)
 list
 import cats.effect.SyncIO
 (Stream(1, 2, 3) ++ Stream.raiseError[SyncIO](new RuntimeException) ++ Stream(
@@ -142,3 +142,22 @@ val s5 = s2
 
 s5.compile.drain
   .unsafeRunSync()
+
+Stream.emits(1 to 40).intersperse(",").toList
+val helloPull = Stream("hello").pull
+
+helloPull.echo
+
+//This has an output type of Nothing, meaning it doesn’t output any values, and a result of String
+Pull.pure("hello")
+
+def unconsList(li: List[Int]) = li match {
+  case head :: next => Some(head -> next)
+  case Nil          => None
+}
+
+unconsList((1 to 100).toList).map(_._1)
+
+unconsList((1 to 100).toList).map(_._2)
+
+//fs2.Stream.timeout(23.seconds)

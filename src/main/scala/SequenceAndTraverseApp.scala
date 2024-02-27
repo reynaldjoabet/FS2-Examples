@@ -6,9 +6,9 @@ import scala.concurrent.Future
 object SequenceAndTraverseApp extends IOApp {
   def putStr(str: String): IO[Unit] = IO.delay(println(str))
 
-  val tasks: List[Int] = (1 to 1000).toList
+  val tasks: List[Int]             = (1 to 1000).toList
   def taskExecutor(i: Int): String = s"Executing task $i"
-  val runAllTasks: IO[List[Unit]] =
+  val runAllTasks: IO[List[Unit]]  =
     tasks.traverse(i => putStr(taskExecutor(i))) // traverse is foreach in ZIO
 
   override def run(args: List[String]): IO[ExitCode] =
@@ -16,9 +16,9 @@ object SequenceAndTraverseApp extends IOApp {
 // alias for fold is combineAll
 // map and sequence == traverse
 //foldMap maps a user-supplied function over the sequence and combines the results using a Monoid
-  val tasks1: List[IO[Int]] = (1 to 1000).map(IO.pure).toList
-  val sequenceAllTasks: IO[List[Int]] = tasks1.sequence
-  val printTaskSequence = sequenceAllTasks.map(_.mkString(", ")).flatMap(putStr)
+  val tasks1: List[IO[Int]]                          = (1 to 1000).map(IO.pure).toList
+  val sequenceAllTasks: IO[List[Int]]                = tasks1.sequence
+  val printTaskSequence                              = sequenceAllTasks.map(_.mkString(", ")).flatMap(putStr)
 
   val fold = Foldable[List].fold(List(1, 2, 3, 45, 5))
 

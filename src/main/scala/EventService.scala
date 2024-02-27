@@ -9,7 +9,7 @@ import fs2.{Pipe, Stream}
 import fs2.concurrent.{SignallingRef, Topic}
 sealed trait Event
 case class Text(value: String) extends Event
-case object Quit extends Event
+case object Quit               extends Event
 
 class EventService[F[_]](
     eventsTopic: Topic[F, Event],
@@ -41,7 +41,7 @@ class EventService[F[_]](
       _.foreach {
         case e @ Text(_) =>
           console.println(s"Subscriber #$subscriberNumber processing event: $e")
-        case Quit => interrupter.set(true)
+        case Quit        => interrupter.set(true)
       }
 
     val events: Stream[F, Event] =
@@ -58,10 +58,10 @@ class EventService[F[_]](
 object PubSub extends IOApp.Simple {
 
   val program = for {
-    topic <- Stream.eval(Topic[IO, Event])
+    topic  <- Stream.eval(Topic[IO, Event])
     signal <- Stream.eval(SignallingRef[IO, Boolean](false))
     service = new EventService[IO](topic, signal)
-    _ <- service.startPublisher.concurrently(service.startSubscribers)
+    _      <- service.startPublisher.concurrently(service.startSubscribers)
   } yield ()
 
   def run: IO[Unit] = program.compile.drain

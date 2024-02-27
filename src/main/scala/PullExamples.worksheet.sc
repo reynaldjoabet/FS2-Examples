@@ -1,3 +1,4 @@
+import fs2.concurrent.SignallingRef
 import cats.kernel.Monoid
 import cats.effect.SyncIO
 import cats.effect.unsafe.IORuntime
@@ -85,7 +86,7 @@ val jf = for {
 def sumOperator[F[_], A: Monoid](windowSize: Int): Pipe[F, A, A] = { in =>
   def go(stream: Stream[F, A]): Pull[F, A, Unit] = {
     stream.pull.unconsN(windowSize, true).flatMap {
-      case None => Pull.done
+      case None              => Pull.done
       case Some((chunk, tl)) =>
         Pull.output1(
           chunk.foldLeft(Monoid[A].empty)((acc, a) => Monoid[A].combine(acc, a))
@@ -121,3 +122,14 @@ take(Stream.emits(1 to 100), 8)
 Stream.emits(1 to 900).through(sumOperator(5)).toList
 
 Stream(7).pull.echo // convert a Stream to a Pull
+
+//I was wondering if it's possible to start a stream based on  change of value on SignallingRef[IO, Boolean], from false to true.
+//Or if a stream can sleep infinitely then wake up based on a change in the signal.
+
+SignallingRef.apply[IO, Boolean](true).map(_.discrete)
+
+SignallingRef[IO, Boolean](false).flatMap { signal =>
+  val s1 = Stream.awakeEvery[IO](1.second).interruptWhen(signal).map(_ => 1)
+  val s2 = Stream.sleep[IO](4.seconds) >> Stream.eval(signal.set(true)).map(_ => 2)
+  s1.concurrently(s2).compile.toVector
+}

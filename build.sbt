@@ -2,7 +2,7 @@
 
 scalaVersion := "2.13.10"
 
-name := "FS2-EXAMPLES"
+name    := "FS2-EXAMPLES"
 version := "1.0"
 val fs2Version = "3.9.2"
 libraryDependencies += "co.fs2" %% "fs2-core" % fs2Version

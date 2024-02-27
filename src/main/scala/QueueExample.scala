@@ -22,8 +22,8 @@ object QueueExample {
     for {
       q1 <- Stream.eval(Queue.bounded[IO, Int](1))
       q2 <- Stream.eval(Queue.bounded[IO, Int](100))
-      bp = new Buffering[IO](q1, q2)
-      _ <- Stream.sleep[IO](5.seconds).concurrently(bp.start.drain)
+      bp  = new Buffering[IO](q1, q2)
+      _  <- Stream.sleep[IO](5.seconds).concurrently(bp.start.drain)
     } yield ()
 
   def queues(queue: Queue[IO, Int]) =
@@ -34,10 +34,10 @@ object QueueExample {
 
   def queues2(queue: Queue[IO, Chunk[Int]]) =
     Stream.emits(1 to 1000).enqueueUnterminatedChunks(queue)
-  val queue = for {
-    queue <- Queue.unbounded[IO, Option[Int]]
+  val queue                                 = for {
+    queue          <- Queue.unbounded[IO, Option[Int]]
     streamFromQueue = Stream.fromQueueNoneTerminated(queue)
-    _ <- Seq(Some(1), Some(2), Some(3), None).map(queue.offer).sequence
-    result <- streamFromQueue.compile.toList
+    _              <- Seq(Some(1), Some(2), Some(3), None).map(queue.offer).sequence
+    result         <- streamFromQueue.compile.toList
   } yield result
 }
