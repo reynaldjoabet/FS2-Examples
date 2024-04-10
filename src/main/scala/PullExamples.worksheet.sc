@@ -23,7 +23,7 @@ val donePull = Pull.done
 
 //val f= Pull.raiseError( new RuntimeException())
 
-val purePull = Pull.pure(23)
+val purePull = Pull.pure(23).void.streamNoScope
 
 val chunkOne = Pull.output1(2)
 
@@ -133,3 +133,20 @@ SignallingRef[IO, Boolean](false).flatMap { signal =>
   val s2 = Stream.sleep[IO](4.seconds) >> Stream.eval(signal.set(true)).map(_ => 2)
   s1.concurrently(s2).compile.toVector
 }
+
+
+Chunk(1,2,4,4).splitAt(1)
+
+
+(Stream(1) ++ Stream(2, 3) ++ Stream(4, 5, 6)).chunks.toList
+
+Stream(1,2,3,4).evalMap(i => SyncIO(println(i))).take(2).compile.drain.unsafeRunSync()
+
+Stream(1,2,3,4).evalMapChunk(i => SyncIO(println(i))).take(2).compile.drain.unsafeRunSync()
+
+
+import fs2.io._
+
+Stream(1).covary[IO].pull.uncons
+
+

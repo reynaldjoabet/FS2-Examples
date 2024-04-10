@@ -1,3 +1,4 @@
+import cats.effect.kernel.Async
 import cats.effect.unsafe.IORuntime
 import scala.concurrent.Future
 import fs2.Pure
@@ -161,3 +162,100 @@ unconsList((1 to 100).toList).map(_._1)
 unconsList((1 to 100).toList).map(_._2)
 
 //fs2.Stream.timeout(23.seconds)
+
+Stream(1,2,3,4).covary[IO].parEvalMap(2)(i => IO(println(i))).compile.drain.unsafeRunSync()
+
+
+abstract class Student
+
+case object Undergraduate extends Student
+case object Postgraduate extends Student
+case object Masters extends Student
+
+def s(s:Student)= s match {
+  case Masters => 1
+  case other=>2
+}
+s(Undergraduate)
+s(Masters)
+s(Postgraduate)
+
+
+// fs2.Stream
+//     .unfold(1)(x => Some(x, x + 1))
+//     //.chunks
+//     .toList
+
+
+Stream(1,2,3,4).intersperse("\n").toList
+
+Stream(1,2,3,4).zipWithNext.toList
+Stream.repeatEval(IO(65))
+
+val n=Stream("ok","skip","next ok","skip","told you").pull
+.takeWhile(o =>o != "skip")
+.flatMap{
+  case None => Pull.done
+
+  case Some(s) => s.drop(1).pull.echo
+}.stream.toList
+
+import scala.concurrent.duration.FiniteDuration
+
+object StreamUtils {
+
+  case class TimeoutException(duration: FiniteDuration) extends RuntimeException(s"No new messages received for $duration")
+
+  def timeoutOnIdle[F[_] : Async, A](duration: FiniteDuration): Pipe[F, A, A] = { stream =>
+    stream
+      .pull
+      .timed { timedPull =>
+        def go(timedPull: Pull.Timed[F, A]): Pull[F, A, Unit] =
+          timedPull.timeout(duration) >>
+            timedPull.uncons.flatMap {
+              case Some((Right(elems), next)) => Pull.output(elems) >> go(next)
+              case Some((Left(_), _)) => Pull.raiseError(TimeoutException(duration))
+              case None => Pull.done
+            }
+
+        go(timedPull)
+      }
+      .stream
+  }
+
+}
+
+Stream.repeatEval(IO((1 to 100).toList))
+.flatMap(Stream.emits(_))
+.mapChunks(_.map(_+2))
+
+//Stream.emits(8)
+s1.chunks.mapChunks( _ => ???)
+// it can be used by utilizing .through(StreamUtils.timeoutOnIdle(5.seconds))
+
+s1.pull.uncons// This constructs a pull that pulls the next chunk from the stream.
+
+//We use uncons to pull the next chunk from the stream, giving us a Pull[F,Nothing,Option[(Chunk[O],Stream[F,O])]]
+
+//We finish pulling with Pull.done, a pull that does nothing.
+
+Stream(1, 2, 3).append(Stream(4, 5, 6)).mapChunks {c=>println(c);c.map(_+2)}
+.toList
+
+((1 to 10) ++( 11 to 20)).mkString("&")
+
+val buses = List("110")
+val trams = List("31","33")
+(buses ++ trams).mkString("&")
+
+
+Stream.iterate(0)(_+1).filterNot(_%2==0)
+.sliding(3).take(15).toList
+
+
+Stream.iterate(0)(_+1).filterNot(_%2==0)
+.sliding(3).map(_.foldLeft(0)(_+_)).take(15).toList
+Stream.fixedRateStartImmediately[IO](3.seconds)
+
+//Seq(1,23).join(Seq(2,3))
+

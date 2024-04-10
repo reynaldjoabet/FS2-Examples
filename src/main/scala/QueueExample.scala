@@ -40,4 +40,29 @@ object QueueExample {
     _              <- Seq(Some(1), Some(2), Some(3), None).map(queue.offer).sequence
     result         <- streamFromQueue.compile.toList
   } yield result
+
+  // val startConsumer = consumeSubstream(Stream.fromQueueNoneTerminated(q)).allocatedCase.start
+  // Pull.eval(startConsumer).flatMap { consumerFiber =>
+  //     feedQueue(tail, 4, q).flatMap { moreStream =>
+  //         Pull.eval(consumerFiber.joinWithNever).flatMap { case (consumerResult, releaseConsumer) =>
+  //             val resultWrapped = Resource.makeCase(IO.pure(consumerResult)) { (_, exitCase) => releaseConsumer(exitCase) }
+  //             Pull.output1(resultWrapped) >> go(moreStream)
+  //         }
+  //     }
+  // }
+
+
+  //Stream.resource(...).pull causes the resource to allocate, and not release until the end of the stream, which is good
+
+Stream(7)
+  List.empty[Stream[IO,Int]].parJoinUnbounded
+
+
+
+  // def drop(n: Int)=
+  //   Stream.emits(1 to 100)
+  //   .covary[IO].pull.uncons.flatMap{
+  //     case None => Pull.done
+  //       case Some((c,s)) => if(c.size==n) s.pull else 
+  //   }
 }
