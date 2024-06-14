@@ -13,7 +13,7 @@ jobs:
     name: Build Project
     strategy:
       matrix:
-        os: ["ubuntu-latest", "macos-latest"]
+        os: ["ubuntu-latest"]
         scala: [2.13.12,3.3.0]
         java: [temurin@17]
     runs-on: ${{matrix.os}}
@@ -32,7 +32,7 @@ jobs:
     name: Build Project
     strategy:
       matrix:
-        os: ["ubuntu-latest", "macos-latest"]
+        os: ["ubuntu-latest"]
         scala: [2.13.12,3.3.0]
         java: [temurin@17]
     runs-on: ${{matrix.os}}

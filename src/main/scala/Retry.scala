@@ -1,10 +1,11 @@
-import fs2._
-import cats.effect._
-
 import scala.concurrent.duration._
 import scala.util.Random
 
+import cats.effect._
+import fs2._
+
 object Retry extends IOApp.Simple {
+
   override def run: IO[Unit] = {
     def doEffectFailing[A](io: IO[A]): IO[A] = {
       IO(math.random()).flatMap { flag =>
@@ -13,16 +14,21 @@ object Retry extends IOApp.Simple {
       }
     }
 
-    Stream.retry(
-      fo = doEffectFailing(IO(42)),
-      delay = 3.second,
-      nextDelay = _ * 2,
-      maxAttempts = 5
-    ).compile.drain
+    Stream
+      .retry(
+        fo = doEffectFailing(IO(42)),
+        delay = 3.second,
+        nextDelay = _ * 2,
+        maxAttempts = 5
+      )
+      .compile
+      .drain
 
     // Exercise
-    val searches                              = Stream.iterateEval("")(s => IO(Random.nextPrintableChar()).map(s + _))
-    def performSearch(text: String): IO[Unit] = doEffectFailing(IO.println(s"Performing search for text: $text"))
+    val searches = Stream.iterateEval("")(s => IO(Random.nextPrintableChar()).map(s + _))
+    def performSearch(text: String): IO[Unit] = doEffectFailing(
+      IO.println(s"Performing search for text: $text")
+    )
 
     // The delays should be 1s, 2s, 3s, 4s, ...
     // The maximum attempt is 5
@@ -46,4 +52,5 @@ object Retry extends IOApp.Simple {
       .compile
       .drain
   }
+
 }

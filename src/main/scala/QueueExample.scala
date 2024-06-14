@@ -1,23 +1,26 @@
-import fs2._
-import cats.effect.std._
-import cats.effect._
 import scala.concurrent.duration.DurationInt
+
+import cats.effect._
+import cats.effect.std._
 import cats.implicits._
+import fs2._
+
 object QueueExample {
 
   class Buffering[F[_]: Concurrent: Console](
-      q1: Queue[F, Int],
-      q2: Queue[F, Int]
+    q1: Queue[F, Int],
+    q2: Queue[F, Int]
   ) {
+
     def start: Stream[F, Unit] = Stream(
       Stream.range(0, 1000).covary[F].foreach(q1.offer),
       Stream.repeatEval(q1.take).foreach(q2.offer),
       // .map won't work here as you're trying to map a pure value with a side effect
-      Stream
-        .repeatEval(q2.take)
-        .foreach(n => Console[F].println(s"Pulling out $n from Queue #2"))
+      Stream.repeatEval(q2.take).foreach(n => Console[F].println(s"Pulling out $n from Queue #2"))
     ).parJoin(3)
+
   }
+
   val streamz =
     for {
       q1 <- Stream.eval(Queue.bounded[IO, Int](1))
@@ -34,7 +37,8 @@ object QueueExample {
 
   def queues2(queue: Queue[IO, Chunk[Int]]) =
     Stream.emits(1 to 1000).enqueueUnterminatedChunks(queue)
-  val queue                                 = for {
+
+  val queue = for {
     queue          <- Queue.unbounded[IO, Option[Int]]
     streamFromQueue = Stream.fromQueueNoneTerminated(queue)
     _              <- Seq(Some(1), Some(2), Some(3), None).map(queue.offer).sequence

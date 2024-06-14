@@ -1,24 +1,27 @@
-import cats.effect._
 import java.io.BufferedReader
-import scala.collection.mutable.ListBuffer
-import scala.util.Try
 import java.io.FileReader
 import java.nio.file.{Files => JFiles}
 import java.nio.file.Paths
-import scala.jdk.CollectionConverters._
+
+import scala.collection.mutable.ListBuffer
 import scala.io.Source
+import scala.jdk.CollectionConverters._
+import scala.util.Try
 import scala.util.Using
-import fs2.io.file._
-import fs2._
+
+import cats.effect._
 import cats.effect.std.Queue
+import fs2._
+import fs2.io.file._
 
 object CSVProcessing extends IOApp.Simple {
+
   case class LegoSet(
-      id: String,
-      name: String,
-      year: Int,
-      themeId: Int,
-      numParts: Int
+    id: String,
+    name: String,
+    year: Int,
+    themeId: Int,
+    numParts: Int
   )
 
   private def parseLegoSet(line: String): Option[LegoSet] = {
@@ -35,9 +38,9 @@ object CSVProcessing extends IOApp.Simple {
   }
 
   def readLegoSetImperative(
-      filename: String,
-      predicate: LegoSet => Boolean,
-      limit: Int
+    filename: String,
+    predicate: LegoSet => Boolean,
+    limit: Int
   ): List[LegoSet] = {
     var reader: BufferedReader        = null
     val legoSets: ListBuffer[LegoSet] = ListBuffer.empty
@@ -48,23 +51,24 @@ object CSVProcessing extends IOApp.Simple {
       var count        = 0
       while (line != null && count < limit) {
         val legoSet = parseLegoSet(line)
-        legoSet.filter(predicate).foreach { lego =>
-          legoSets.append(lego)
-          count += 1
-        }
+        legoSet
+          .filter(predicate)
+          .foreach { lego =>
+            legoSets.append(lego)
+            count += 1
+          }
         line = reader.readLine()
       }
-    } finally {
+    } finally
       reader.close()
-    }
     legoSets.toList
 //legoSets.toList.filter(predicate).take(limit)
   }
 
   def readLegoSetList(
-      filename: String,
-      predicate: LegoSet => Boolean,
-      limit: Int
+    filename: String,
+    predicate: LegoSet => Boolean,
+    limit: Int
   ): List[LegoSet] = {
     JFiles
       .readAllLines(Paths.get(filename))
@@ -77,25 +81,20 @@ object CSVProcessing extends IOApp.Simple {
   }
 
   def readLegoSetIterator(
-      filename: String,
-      predicate: LegoSet => Boolean,
-      limit: Int
+    filename: String,
+    predicate: LegoSet => Boolean,
+    limit: Int
   ): List[LegoSet] = {
     Using(Source.fromFile(filename)) { source =>
-      source
-        .getLines()
-        .flatMap(parseLegoSet)
-        .filter(predicate)
-        .take(limit)
-        .toList
+      source.getLines().flatMap(parseLegoSet).filter(predicate).take(limit).toList
     }.get
 
   }
 
   def readLegoSetStreams(
-      filename: String,
-      predicate: LegoSet => Boolean,
-      limit: Int
+    filename: String,
+    predicate: LegoSet => Boolean,
+    limit: Int
   ): IO[List[LegoSet]] = {
     Files[IO]
       .readAll(Path(filename))
@@ -109,7 +108,8 @@ object CSVProcessing extends IOApp.Simple {
       .toList
 
   }
-  override def run: IO[Unit]                              =
-    readLegoSetStreams("sets.csv", _.year > 1980, 1000)
-      .flatMap(IO.println(_))
+
+  override def run: IO[Unit] =
+    readLegoSetStreams("sets.csv", _.year > 1980, 1000).flatMap(IO.println(_))
+
 }

@@ -1,7 +1,8 @@
-import fs2._
 import cats.effect._
+import fs2._
 
 object Create extends IOApp.Simple {
+
   override def run: IO[Unit] = {
     val s: Stream[IO, Unit] = Stream.eval(IO.println("my first effectful stream!"))
     s.compile.toList.flatMap(IO.println)
@@ -34,13 +35,16 @@ object Create extends IOApp.Simple {
 
     // Suggestion: use unfoldEval + flatten
     def fetchAll(): Stream[IO, Int] = {
-      Stream.unfoldEval(0) { pageNumber =>
-        fetchPage(pageNumber).map { pageElems =>
-          if (pageElems.isEmpty) None
-          else Some((Stream.emits(pageElems), pageNumber + 1))
+      Stream
+        .unfoldEval(0) { pageNumber =>
+          fetchPage(pageNumber).map { pageElems =>
+            if (pageElems.isEmpty) None
+            else Some((Stream.emits(pageElems), pageNumber + 1))
+          }
         }
-      }.flatten
+        .flatten
     }
     fetchAll().compile.toList.flatMap(IO.println)
   }
+
 }

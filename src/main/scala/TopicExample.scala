@@ -1,13 +1,15 @@
-import fs2._
-import cats.effect._
 import scala.concurrent.duration._
-import fs2.concurrent.Topic
+
+import cats.effect._
+import fs2._
 import fs2.concurrent.Signal
+import fs2.concurrent.Topic
 
 object TopicExample extends IOApp {
 
   val stream2 =
-    fs2.Stream
+    fs2
+      .Stream
       .unfold(1)(x => Some(x, x + 1))
       .chunks
       .mapAccumulate(1)((l, c) => (c.size + l, c))
@@ -32,12 +34,10 @@ object TopicExample extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = stream2
     // .metered(2.seconds)
     // .buffer(3)
-    .broadcastThrough(consumer1, consumer2, consumer3)
-    .compile
-    .drain
-    .as(ExitCode.Success)
+    .broadcastThrough(consumer1, consumer2, consumer3).compile.drain.as(ExitCode.Success)
 
   Stream(1, 2, 3, 4).intersperse("\n").toList
+
 }
 
 // fs2 lets you write Streams that do not perform any effect, and they have type Stream[Pure, A]

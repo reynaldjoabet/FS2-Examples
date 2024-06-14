@@ -1,17 +1,19 @@
-import fs2.concurrent.SignallingRef
-import cats.kernel.Monoid
-import cats.effect.SyncIO
-import cats.effect.unsafe.IORuntime
-import scala.concurrent.Future
-import fs2.Pure
-import cats.instances.stream
-import cats.effect._
-import fs2._
-import cats.implicits._
-import scala.concurrent.duration._
 import java.util.concurrent.TimeUnit
+
+import scala.concurrent.duration._
 import scala.concurrent.duration.FiniteDuration._
+import scala.concurrent.Future
 import scala.language.postfixOps
+
+import cats.effect._
+import cats.effect.unsafe.IORuntime
+import cats.effect.SyncIO
+import cats.implicits._
+import cats.instances.stream
+import cats.kernel.Monoid
+import fs2._
+import fs2.concurrent.SignallingRef
+import fs2.Pure
 
 implicit val ec: IORuntime = IORuntime.global
 
@@ -56,7 +58,7 @@ Stream
 
 (Stream(1) ++ Stream(2, 3) ++ Stream(4, 5, 6)).chunks.toList
 
-Stream.emits((1 to 100)).chunkLimit(5).toList
+Stream.emits(1 to 100).chunkLimit(5).toList
 
 val s =
   Stream(1, 2, 3) ++ Stream.sleep_[IO](500.millis) ++ Stream(4, 5) ++ Stream
@@ -85,14 +87,17 @@ val jf = for {
 
 def sumOperator[F[_], A: Monoid](windowSize: Int): Pipe[F, A, A] = { in =>
   def go(stream: Stream[F, A]): Pull[F, A, Unit] = {
-    stream.pull.unconsN(windowSize, true).flatMap {
-      case None              => Pull.done
-      case Some((chunk, tl)) =>
-        Pull.output1(
-          chunk.foldLeft(Monoid[A].empty)((acc, a) => Monoid[A].combine(acc, a))
-        ) >> go(tl)
-      // case Some((chunk,tl)) =>Pull.output1( chunk.foldLeft(Monoid[A].empty)(_ |+| _))>>go(tl)
-    }
+    stream
+      .pull
+      .unconsN(windowSize, true)
+      .flatMap {
+        case None => Pull.done
+        case Some((chunk, tl)) =>
+          Pull.output1(
+            chunk.foldLeft(Monoid[A].empty)((acc, a) => Monoid[A].combine(acc, a))
+          ) >> go(tl)
+        // case Some((chunk,tl)) =>Pull.output1( chunk.foldLeft(Monoid[A].empty)(_ |+| _))>>go(tl)
+      }
   }
   go(in).stream
 }
@@ -104,7 +109,8 @@ Stream("hello").toList
 
 Pull.output1[Pure, String]("Hello").stream.compile.toList
 
-def take(s: Stream[IO, Int], size: Int) = s.pull
+def take(s: Stream[IO, Int], size: Int) = s
+  .pull
   .unconsN(size)
   .flatMap {
     case None              => Pull.done
@@ -112,11 +118,7 @@ def take(s: Stream[IO, Int], size: Int) = s.pull
   }
   .stream
 
-take(Stream.emits(1 to 100), 8)
-  .map(x => { println(x); x })
-  .compile
-  .drain
-  .unsafeRunSync()
+take(Stream.emits(1 to 100), 8).map { x => println(x); x }.compile.drain.unsafeRunSync()
 //Stream.resource()
 
 Stream.emits(1 to 900).through(sumOperator(5)).toList
@@ -150,18 +152,20 @@ Stream.unfold(0)(s => Some(s, s + 10)).take(4).toList
 
 def sumPairs[F[_]]: Stream[F, Int] => Stream[F, Int] = { stream =>
   def go(acc: Int, s: Stream[F, Int]): Pull[F, Int, Unit] = {
-    s.pull.uncons.flatMap {
-      case Some((chunk, tail)) =>
-        // If we have at least two elements, sum the first two and continue
-        if (chunk.size >= 2) {
-          val sum = chunk(0) + chunk(1) + acc
-          Pull.output1(sum) >> go(sum, tail.cons(chunk.drop(2)))
-        } else {
-          // Handle the case where there's one element left
-          Pull.output(chunk) >> Pull.done
-        }
-      case None                => Pull.done
-    }
+    s.pull
+      .uncons
+      .flatMap {
+        case Some((chunk, tail)) =>
+          // If we have at least two elements, sum the first two and continue
+          if (chunk.size >= 2) {
+            val sum = chunk(0) + chunk(1) + acc
+            Pull.output1(sum) >> go(sum, tail.cons(chunk.drop(2)))
+          } else {
+            // Handle the case where there's one element left
+            Pull.output(chunk) >> Pull.done
+          }
+        case None => Pull.done
+      }
   }
   go(0, stream).stream
 }
@@ -173,5 +177,4 @@ result.compile.toList.flatMap(res => IO(println(s"Result: $res"))).unsafeRunSync
 List(4).tail.nonEmpty
 Stream(1, 2, 3).noneTerminate.toList
 
-Stream.constant(2, 10).debugChunks(x => x.toString())
-  .take(50).compile.toList
+Stream.constant(2, 10).debugChunks(x => x.toString()).take(50).compile.toList

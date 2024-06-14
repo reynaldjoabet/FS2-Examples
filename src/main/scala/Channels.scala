@@ -1,20 +1,24 @@
-import fs2._
-import fs2.concurrent._
-import cats.effect._
-
 import scala.concurrent.duration._
-import cats._
-import cats.implicits._
-
 import scala.util.Random
 
+import cats._
+import cats.effect._
+import cats.implicits._
+import fs2._
+import fs2.concurrent._
+
 object Channels extends IOApp.Simple {
+
   override def run: IO[Unit] = {
-    Stream.eval(Channel.bounded[IO, Int](1)).flatMap { channel =>
-      val p = Stream.iterate(1)(_ + 1).covary[IO].evalMap(channel.send).drain
-      val c = channel.stream.metered(200.millis).evalMap(i => IO.println(s"Read $i")).drain
-      c.concurrently(p).interruptAfter(6.seconds)
-    }.compile.drain
+    Stream
+      .eval(Channel.bounded[IO, Int](1))
+      .flatMap { channel =>
+        val p = Stream.iterate(1)(_ + 1).covary[IO].evalMap(channel.send).drain
+        val c = channel.stream.metered(200.millis).evalMap(i => IO.println(s"Read $i")).drain
+        c.concurrently(p).interruptAfter(6.seconds)
+      }
+      .compile
+      .drain
 
     sealed trait Measurement
     case class Temperature(value: Double) extends Measurement
@@ -23,7 +27,10 @@ object Channels extends IOApp.Simple {
     implicit val ordHum: Order[Humidity]    = Order.by(_.value)
     implicit val ordTem: Order[Temperature] = Order.by(_.value)
 
-    def createTemperatureSensor(alarm: Channel[IO, Measurement], threshold: Temperature): Stream[IO, Nothing] = {
+    def createTemperatureSensor(
+      alarm: Channel[IO, Measurement],
+      threshold: Temperature
+    ): Stream[IO, Nothing] = {
       Stream
         .repeatEval(IO(Temperature(Random.between(-40.0, 40.0))))
         .evalTap(t => IO.println(f"Current temperature: ${t.value}%.1f"))
@@ -37,7 +44,10 @@ object Channels extends IOApp.Simple {
     // Print every humidity as the current humidity
     // Check if the humidity goes above the threshold and send an alarm
     // Assume that we read each humidity every 100 milliseconds
-    def createHumiditySensor(alarm: Channel[IO, Measurement], threshold: Humidity): Stream[IO, Nothing] =
+    def createHumiditySensor(
+      alarm: Channel[IO, Measurement],
+      threshold: Humidity
+    ): Stream[IO, Nothing] =
       Stream
         .repeatEval(IO(Humidity(Random.between(0.0, 100.0))))
         .evalTap(h => IO.println(f"Current humidity: ${h.value}%.1f"))
@@ -64,12 +74,15 @@ object Channels extends IOApp.Simple {
     // Create one of each sensor and a cooler
     // Run all streams concurrently
     // Interrupt after 3 seconds
-    val program = Stream.eval(Channel.unbounded[IO, Measurement]).flatMap { alarmChannel =>
-      val temperatureSensor = createTemperatureSensor(alarmChannel, temperatureThreshold)
-      val humiditySensor    = createHumiditySensor(alarmChannel, humidityThreshold)
-      val cooler            = createCooler(alarmChannel)
-      Stream(temperatureSensor, humiditySensor, cooler).parJoinUnbounded
-    }
+    val program = Stream
+      .eval(Channel.unbounded[IO, Measurement])
+      .flatMap { alarmChannel =>
+        val temperatureSensor = createTemperatureSensor(alarmChannel, temperatureThreshold)
+        val humiditySensor    = createHumiditySensor(alarmChannel, humidityThreshold)
+        val cooler            = createCooler(alarmChannel)
+        Stream(temperatureSensor, humiditySensor, cooler).parJoinUnbounded
+      }
     program.interruptAfter(3.seconds).compile.drain
   }
+
 }

@@ -2,21 +2,23 @@
 
 import scala.concurrent.duration._
 import scala.language.higherKinds
-import cats.effect.std.Console
+
 import cats.effect.{Clock, IO, IOApp, Temporal}
+import cats.effect.std.Console
 import cats.syntax.all._
 import fs2.{Pipe, Stream}
 import fs2.concurrent.{SignallingRef, Topic}
+
 sealed trait Event
 case class Text(value: String) extends Event
 case object Quit               extends Event
 
 class EventService[F[_]](
-    eventsTopic: Topic[F, Event],
-    interrupter: SignallingRef[F, Boolean]
+  eventsTopic: Topic[F, Event],
+  interrupter: SignallingRef[F, Boolean]
 )(implicit
-    F: Temporal[F],
-    console: Console[F]
+  F: Temporal[F],
+  console: Console[F]
 ) {
 
   // Publishing 15 text events, then single Quit event, and still publishing text events
@@ -41,7 +43,7 @@ class EventService[F[_]](
       _.foreach {
         case e @ Text(_) =>
           console.println(s"Subscriber #$subscriberNumber processing event: $e")
-        case Quit        => interrupter.set(true)
+        case Quit => interrupter.set(true)
       }
 
     val events: Stream[F, Event] =
@@ -53,6 +55,7 @@ class EventService[F[_]](
       events.delayBy(10.second).through(processEvent(3))
     ).parJoin(3)
   }
+
 }
 
 object PubSub extends IOApp.Simple {
@@ -65,4 +68,5 @@ object PubSub extends IOApp.Simple {
   } yield ()
 
   def run: IO[Unit] = program.compile.drain
+
 }
