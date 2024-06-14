@@ -1,4 +1,3 @@
-
 import fs2._
 import cats.effect._
 import fs2.Stream.ToPull
@@ -10,7 +9,7 @@ object Pulls extends IOApp.Simple {
     val outputPull: Pull[Pure, Int, Unit] = Pull.output1(1)
     IO.println(outputPull.stream.toList)
 
-    val outputChunk = Pull.output[Pure,Int](Chunk(1, 2, 3))
+    val outputChunk = Pull.output[Pure, Int](Chunk(1, 2, 3))
     IO.println(outputChunk.stream.toList)
 
     val donePull: Pull[Pure, Nothing, Unit] = Pull.done
@@ -19,14 +18,14 @@ object Pulls extends IOApp.Simple {
 
     val combined =
       for {
-        _ <- Pull.output1[Pure,Int](1)
-        _ <- Pull.output[Pure,Int](Chunk(2, 3, 4))
+        _ <- Pull.output1[Pure, Int](1)
+        _ <- Pull.output[Pure, Int](Chunk(2, 3, 4))
       } yield ()
     IO.println(combined.stream.toList)
     IO.println(combined.stream.chunks.toList)
 
-    val toPull: ToPull[Pure, Int] = s.pull
-    val echoPull: Pull[Pure, Int, Unit] = s.pull.echo
+    val toPull: ToPull[Pure, Int]                            = s.pull
+    val echoPull: Pull[Pure, Int, Unit]                      = s.pull.echo
     val takePull: Pull[Pure, Int, Option[Stream[Pure, Int]]] = s.pull.take(3)
     val dropPull: Pull[Pure, Int, Option[Stream[Pure, Int]]] = s.pull.drop(3)
 
@@ -36,9 +35,9 @@ object Pulls extends IOApp.Simple {
         for {
           tailOpt <- s.pull.drop(skip)
           _       <- tailOpt match {
-            case Some(rest) => rest.pull.take(limit)
-            case None       => Pull.done
-          }
+                       case Some(rest) => rest.pull.take(limit)
+                       case None       => Pull.done
+                     }
         } yield ()
       p.stream
     }
@@ -59,9 +58,9 @@ object Pulls extends IOApp.Simple {
       def go(s: Stream[Pure, A], n: Int): Pull[Pure, A, Unit] = {
         s.pull.uncons.flatMap {
           case Some((chunk, restOfStream)) =>
-            if(chunk.size < n) go(restOfStream, n - chunk.size)
+            if (chunk.size < n) go(restOfStream, n - chunk.size)
             else Pull.output(chunk.drop(n)) >> restOfStream.pull.echo
-          case None => Pull.done
+          case None                        => Pull.done
         }
       }
       go(s, n).stream
@@ -74,7 +73,7 @@ object Pulls extends IOApp.Simple {
         s.pull.uncons.flatMap {
           case Some((chunk, restOfStream)) =>
             Pull.output(chunk.filter(p)) >> go(restOfStream)
-          case None => Pull.done
+          case None                        => Pull.done
         }
       }
       go(s).stream
@@ -101,7 +100,9 @@ object Pulls extends IOApp.Simple {
       }
     }
     IO.println(s.through(runningMax).toList)
-    val t = Stream(-1, -2, -3) ++ Stream(10) ++ Stream(4, 7, 1)
+    val t                                = Stream(-1, -2, -3) ++ Stream(10) ++ Stream(4, 7, 1)
     IO.println(t.through(runningMax).toList)
   }
+
+  val g = Pull.eval(IO(2)).flatMap(Pull.output1(_)).streamNoScope
 }

@@ -1,4 +1,3 @@
-
 // //import fpinscala.iomonad.{IO,Monad,Free,unsafePerformIO}
 // import language.implicitConversions
 // import language.higherKinds
@@ -153,7 +152,6 @@
 //         }
 //       go(in, this)
 //     }
-
 
 //     /*
 //      * See `Process.lift` for a typical repeating `Process`
@@ -1028,11 +1026,7 @@
 //   // println { Process.collect(Process.convertAll) }
 // }
 
-
-
-
 // import language.higherKinds
-
 
 // trait Functor[F[_]] {
 //   def map[A,B](fa: F[A])(f: A => B): F[B]

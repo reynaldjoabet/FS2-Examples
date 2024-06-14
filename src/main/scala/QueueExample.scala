@@ -51,18 +51,15 @@ object QueueExample {
   //     }
   // }
 
+  // Stream.resource(...).pull causes the resource to allocate, and not release until the end of the stream, which is good
 
-  //Stream.resource(...).pull causes the resource to allocate, and not release until the end of the stream, which is good
-
-Stream(7)
-  List.empty[Stream[IO,Int]].parJoinUnbounded
-
-
+  Stream(7)
+  List.empty[Stream[IO, Int]].parJoinUnbounded
 
   // def drop(n: Int)=
   //   Stream.emits(1 to 100)
   //   .covary[IO].pull.uncons.flatMap{
   //     case None => Pull.done
-  //       case Some((c,s)) => if(c.size==n) s.pull else 
+  //       case Some((c,s)) => if(c.size==n) s.pull else
   //   }
 }

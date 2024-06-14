@@ -26,7 +26,6 @@
 
 // final  case class HttpServerTask(serviceA:ServiceA,serviceB:ServiceB)
 
-
 // class Dependencies(val allocator: Allocator) {
 //   lazy val conn = allocator.allocate {
 //     Resource.pure(3)

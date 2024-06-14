@@ -1,4 +1,3 @@
-
 import fs2._
 import cats.effect._
 
@@ -45,10 +44,10 @@ object Queues extends IOApp.Simple {
             randomWait <- IO(math.abs(Random.nextInt()) % 500)
             _          <- IO.sleep(randomWait.millis)
             _          <- controller.postAccount(
-              customerId     = Random.between(1L, 1000L),
-              accountType    = if(Random.nextBoolean()) "ira" else "brokerage",
-              creationDate   = LocalDateTime.now()
-            )
+                            customerId = Random.between(1L, 1000L),
+                            accountType = if (Random.nextBoolean()) "ira" else "brokerage",
+                            creationDate = LocalDateTime.now()
+                          )
           } yield ()
         prog.foreverM
       }
@@ -56,7 +55,9 @@ object Queues extends IOApp.Simple {
 
     object PrintController extends Controller {
       override def postAccount(customerId: Long, accountType: String, creationDate: LocalDateTime): IO[Unit] = {
-        IO.println(s"Initiating account creation. Customer: $customerId Account type: $accountType Created: $creationDate")
+        IO.println(
+          s"Initiating account creation. Customer: $customerId Account type: $accountType Created: $creationDate"
+        )
       }
     }
 
@@ -73,7 +74,7 @@ object Queues extends IOApp.Simple {
     // Create a consumer stream which reads from the queue and prints the message
     // Run everything concurrently
     Stream.eval(Queue.unbounded[IO, CreateAccountData]).flatMap { queue =>
-      val serverStream = Stream.eval(new Server(new QueueController(queue)).start())
+      val serverStream   = Stream.eval(new Server(new QueueController(queue)).start())
       val consumerStream = Stream.fromQueueUnterminated(queue).printlns
       consumerStream.merge(serverStream)
     }.interruptAfter(5.seconds).compile.drain

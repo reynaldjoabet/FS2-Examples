@@ -672,3 +672,128 @@ sealed trait Channel[F[_], A] {
 ```
 
 creating the fiber itself — and running the IO on a separate thread — is an effect (therefore the return type)
+
+
+```scala
+  /** Emits the longest prefix of the input for which all elements test true according to `f`.
+    *
+    * @example {{{
+    * scala> Stream.range(0,1000).takeWhile(_ != 5).toList
+    * res0: List[Int] = List(0, 1, 2, 3, 4)
+    * }}}
+    */
+  def takeWhile(p: O => Boolean, takeFailure: Boolean = false): Stream[F, O] =
+    this.pull.takeWhile(p, takeFailure).void.stream
+
+  /** Like [[takeWhile]], but emits the first value which tests false.
+    *
+    * @example {{{
+    * scala> Stream.range(0,1000).takeThrough(_ != 5).toList
+    * res0: List[Int] = List(0, 1, 2, 3, 4, 5)
+    * }}}
+    */
+  def takeThrough(p: O => Boolean): Stream[F, O] =
+    this.pull.takeThrough(p).void.stream
+```
+
+
+```scala
+List(
+  stream1.compile.drain,
+  stream2.compile.drain,
+  stream3.compile.drain,
+).reduceLeft(_.race(_).void)     (A)
+
+
+List(
+  stream1,
+  stream2,
+  stream3,
+).parJoinUnbounded.compile.drain  (B)
+
+
+(
+  stream1.compile.drain,
+  stream2.compile.drain,
+  stream3.compile.drain,
+).parTupled              (C)
+
+```
+all streams are expected to be infinite
+B creates a channel to hold the results, applies backpressure, etc, which you don't need in this case, so C is best
+
+
+
+```scala
+  implicit final class StreamPullOps[F[_], O](private val self: Pull[F, O, Unit]) extends AnyVal {
+/* Pull transformation that takes the given stream (pull), unrolls it until it either:
+     * - Reaches the end of the stream, and returns None; or
+     * - Reaches an Output action, and emits Some pair with
+     *   the non-empty chunk of values and the rest of the stream.
+     */
+    private[fs2] def uncons: Pull[F, Nothing, Option[(Chunk[O], Pull[F, O, Unit])]] =
+      self match {
+        case Succeeded(_)    => Succeeded(None)
+        case Output(vals)    => Succeeded(Some(vals -> unit))
+        case ff: Fail        => ff
+        case it: Interrupted => it
+        case _               => Uncons(self)
+      }
+  }
+```
+
+The `uncons` method in FS2 is designed to decompose a stream (Pull) into a chunk of values and the remaining part of the stream. It does this until it either reaches the end of the stream or encounters an output action
+
+`F`: The effect type (e.g., IO, Task).
+`Nothing`: Indicates that this pull does not produce any output values directly.
+`Option[(Chunk[O], Pull[F, O, Unit])]`: The result type. It returns an Option containing a tuple:
+`Chunk[O]`: A non-empty chunk of values.
+`Pull[F, O, Unit]`: The rest of the stream (as another Pull).
+
+`Succeeded(_)`:
+This case represents a successfully completed stream that has no more elements to yield.
+The result is Succeeded(None), indicating that there are no more chunks to pull from the stream.
+
+`Output(vals)`:
+This case represents a stream that has produced some values (vals).
+The result is Succeeded(Some(vals -> unit)), where vals is the chunk of values and unit represents the rest of the stream which is now empty.
+
+`Fail`:
+This case handles a stream that has failed with an error.
+The result is ff, propagating the failure.
+
+`Interrupted:`
+This case handles a stream that has been interrupted.
+The result is it, propagating the interruption.
+
+`Default Case (_)`:
+This is the catch-all case for any other stream state not explicitly handled above.
+The result is Uncons(self), which creates a new Uncons pull operation to further decompose the stream
+
+
+```c
+  /* Implementation notes:
+   *
+   * A Pull can be one of the following:
+   *  - A Terminal - the end result of pulling. This may have ended in:
+   *    - Succeeded with a result of type R.
+   *    - Failed with an exception
+   *    - Interrupted from another thread with a known `scopeId`
+   *
+   *  - A Bind, that binds a first computation(another Pull) with a method to _continue_
+   *    the computation from the result of the first one `step`.
+   *
+   *  - A single Action, which can be one of following:
+   *
+   *    - Eval (or lift) an effectful operation of type `F[R]`
+   *    - Output some values of type O.
+   *    - Acquire a new resource and add its cleanup to the current scope.
+   *    - Open, Close, or Access to the resource scope.
+   *    - side-Step or fork to a different computation
+   */
+
+  /* A Terminal indicates how a pull evaluation ended.
+   * A pull may have succeeded with a result, failed with an exception,
+   * or interrupted from another concurrent pull.
+   */
+   ```

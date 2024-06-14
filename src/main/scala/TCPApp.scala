@@ -1,20 +1,18 @@
-
-
 import cats.effect._
 import cats.effect.std.Console
 import cats.syntax.all._
 import com.comcast.ip4s._
 import fs2.io.net.{ConnectException, Network, Socket}
-import fs2.{Chunk, Stream, text}
+import fs2.{text, Chunk, Stream}
 
 import scala.concurrent.duration.DurationInt
 
-/**
- * The <a href="https://github.com/typelevel/fs2-chat">fs2-chat</a> sample application
- * implements a multiuser chat server and a single user chat client
- * using the FS2 TCP support and <a href="https://scodec.org/">scodec</a> for binary processing.
- */
-object TCPApp extends IOApp.Simple{
+/** The <a href="https://github.com/typelevel/fs2-chat">fs2-chat</a> sample
+  * application implements a multiuser chat server and a single user chat client
+  * using the FS2 TCP support and <a href="https://scodec.org/">scodec</a> for
+  * binary processing.
+  */
+object TCPApp extends IOApp.Simple {
 
   val socketAddress = SocketAddress(host"localhost", port"5555")
 

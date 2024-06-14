@@ -1,5 +1,3 @@
-
-
 import java.io.{BufferedReader, FileReader}
 
 import fs2._
@@ -21,11 +19,13 @@ object Resources extends IOApp.Simple {
 
     Stream
       .fromAutoCloseable(acquireReader)
-      //.resource(readerResource)
+      // .resource(readerResource)
       .flatMap(readLines)
       .take(10)
       .printlns
       .compile
       .drain
   }
+
+  Stream.eval(IO(2))
 }

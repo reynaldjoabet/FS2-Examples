@@ -1,4 +1,3 @@
-
 import fs2._
 import cats.effect._
 import scala.concurrent.duration._

@@ -1,3 +1,4 @@
+import java.math.BigInteger
 import cats.effect.kernel.Async
 import cats.effect.unsafe.IORuntime
 import scala.concurrent.Future
@@ -163,50 +164,48 @@ unconsList((1 to 100).toList).map(_._2)
 
 //fs2.Stream.timeout(23.seconds)
 
-Stream(1,2,3,4).covary[IO].parEvalMap(2)(i => IO(println(i))).compile.drain.unsafeRunSync()
-
+Stream(1, 2, 3, 4).covary[IO].parEvalMap(2)(i => IO(println(i))).compile.drain.unsafeRunSync()
 
 abstract class Student
 
 case object Undergraduate extends Student
-case object Postgraduate extends Student
-case object Masters extends Student
+case object Postgraduate  extends Student
+case object Masters       extends Student
 
-def s(s:Student)= s match {
+def s(s: Student) = s match {
   case Masters => 1
-  case other=>2
+  case other   => 2
 }
 s(Undergraduate)
 s(Masters)
 s(Postgraduate)
-
 
 // fs2.Stream
 //     .unfold(1)(x => Some(x, x + 1))
 //     //.chunks
 //     .toList
 
+Stream(1, 2, 3, 4).intersperse("\n").toList
 
-Stream(1,2,3,4).intersperse("\n").toList
-
-Stream(1,2,3,4).zipWithNext.toList
+Stream(1, 2, 3, 4).zipWithNext.toList
 Stream.repeatEval(IO(65))
 
-val n=Stream("ok","skip","next ok","skip","told you").pull
-.takeWhile(o =>o != "skip")
-.flatMap{
-  case None => Pull.done
+val n = Stream("ok", "skip", "next ok", "skip", "told you").pull
+  .takeWhile(o => o != "skip")
+  .flatMap {
+    case None => Pull.done
 
-  case Some(s) => s.drop(1).pull.echo
-}.stream.toList
+    case Some(s) => s.drop(1).pull.echo
+  }.stream.toList
 
 import scala.concurrent.duration.FiniteDuration
 
 object StreamUtils {
 
-  case class TimeoutException(duration: FiniteDuration) extends RuntimeException(s"No new messages received for $duration")
+  case class TimeoutException(duration: FiniteDuration)
+      extends RuntimeException(s"No new messages received for $duration")
 
-  def timeoutOnIdle[F[_] : Async, A](duration: FiniteDuration): Pipe[F, A, A] = { stream =>
+  def timeoutOnIdle[F[_]: Async, A](duration: FiniteDuration): Pipe[F, A, A] = { stream =>
     stream
       .pull
       .timed { timedPull =>
@@ -214,8 +213,8 @@ object StreamUtils {
           timedPull.timeout(duration) >>
             timedPull.uncons.flatMap {
               case Some((Right(elems), next)) => Pull.output(elems) >> go(next)
-              case Some((Left(_), _)) => Pull.raiseError(TimeoutException(duration))
-              case None => Pull.done
+              case Some((Left(_), _))         => Pull.raiseError(TimeoutException(duration))
+              case None                       => Pull.done
             }
 
         go(timedPull)
@@ -226,36 +225,83 @@ object StreamUtils {
 }
 
 Stream.repeatEval(IO((1 to 100).toList))
-.flatMap(Stream.emits(_))
-.mapChunks(_.map(_+2))
+  .flatMap(Stream.emits(_))
+  .mapChunks(_.map(_ + 2))
 
 //Stream.emits(8)
-s1.chunks.mapChunks( _ => ???)
+s1.chunks.mapChunks(_ => ???)
 // it can be used by utilizing .through(StreamUtils.timeoutOnIdle(5.seconds))
 
-s1.pull.uncons// This constructs a pull that pulls the next chunk from the stream.
+s1.pull.uncons // This constructs a pull that pulls the next chunk from the stream.
 
 //We use uncons to pull the next chunk from the stream, giving us a Pull[F,Nothing,Option[(Chunk[O],Stream[F,O])]]
 
 //We finish pulling with Pull.done, a pull that does nothing.
 
-Stream(1, 2, 3).append(Stream(4, 5, 6)).mapChunks {c=>println(c);c.map(_+2)}
-.toList
+Stream(1, 2, 3).append(Stream(4, 5, 6)).mapChunks { c => println(c); c.map(_ + 2) }
+  .toList
 
-((1 to 10) ++( 11 to 20)).mkString("&")
+((1 to 10) ++ (11 to 20)).mkString("&")
 
 val buses = List("110")
-val trams = List("31","33")
+val trams = List("31", "33")
 (buses ++ trams).mkString("&")
 
+Stream.iterate(0)(_ + 1).filterNot(_ % 2 == 0)
+  .sliding(3).take(15).toList
 
-Stream.iterate(0)(_+1).filterNot(_%2==0)
-.sliding(3).take(15).toList
-
-
-Stream.iterate(0)(_+1).filterNot(_%2==0)
-.sliding(3).map(_.foldLeft(0)(_+_)).take(15).toList
+Stream.iterate(0)(_ + 1).filterNot(_ % 2 == 0)
+  .sliding(3).map(_.foldLeft(0)(_ + _)).take(15).toList
 Stream.fixedRateStartImmediately[IO](3.seconds)
 
 //Seq(1,23).join(Seq(2,3))
 
+Stream.emits(1 to 200).take(10).toList
+
+Stream.emits(1 to 200).takeWhile(_ != 5).take(10).toList //List[Int] = List(1, 2, 3, 4)
+
+Stream.emits(1 to 200).takeWhile(_ % 2 == 0).take(10).toList // List()
+
+Stream.emits(2 to 200).takeWhile(_ % 2 == 0).take(10).toList //List(2)
+
+def dedupeConsecutiveWhen[F[_], I](f: (I, I) => Boolean): Pipe[F, I, I] = in =>
+  in.zipWithNext.map {
+    case (curr, Some(next)) if f(curr, next) => (None: Option[I])
+    case (curr, Some(next))                  => Some(curr)
+    case (curr, None)                        => Some(curr)
+  }.unNone
+
+Stream(1, 1, 2, 2, 3, 4, 5, 2).through(dedupeConsecutiveWhen(_ == _)).toList
+
+Stream.chunk(Chunk(1, 23, 3)).groupAdjacentBy(identity).map(_._2).compile.to(Chunk)
+  .toArray
+
+val fibonacciStream = Stream
+  .unfold((BigInt(0), BigInt(1))) { case (a, b) =>
+    val next = a + b
+    Some((a, (b, next)))
+  }
+  .covary[IO]
+  .take(100).compile.toList.unsafeRunSync()
+
+LazyList.unfold(BigInt(0), BigInt(1)) { case (a, b) =>
+  val next = a + b
+  Some((a, (b, next)))
+
+}
+
+val factorialStream = Stream.unfold(BigInt(1), BigInt(1)) { case (acc, n) =>
+  Some((acc, (acc * (n + 1), n + 1)))
+}.covary[IO]
+  .take(5).compile.toList.unsafeRunSync().last
+
+LazyList.unfold(BigInt(1), BigInt(1)) { case (acc, n) =>
+  Some((acc, (acc * (n + 1), n + 1)))
+}
+
+List(3, 5).fold(0)((a, b) => a + b)
+
+//how do i go from fs2.Stream[_, Option[T]] to an fs2.Stream[_, T] by discarding option values
+Stream(Some(1), Some(2), None, Some(3), None).unNone.toList
+
+Stream.emits((1 to 10)).map(Some(_)).unNoneTerminate.toList

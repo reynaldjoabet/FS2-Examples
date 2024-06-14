@@ -37,9 +37,7 @@ object TopicExample extends IOApp {
     .drain
     .as(ExitCode.Success)
 
-
-
-    Stream(1,2,3,4).intersperse("\n").toList
+  Stream(1, 2, 3, 4).intersperse("\n").toList
 }
 
 // fs2 lets you write Streams that do not perform any effect, and they have type Stream[Pure, A]
@@ -50,8 +48,8 @@ object TopicExample extends IOApp {
 // this means that some operations inside fs2 have type Stream[Pure, A], but they can also be used as part of Stream[IO, A]. Stream.emit is an example
 // now, most of this machinery is completely transparent to you, because effects in fs2 are covariant
 // just like Animal <: Dog implies List[Animal] <: List[Dog] (<: means is a subtype of)
-// Pure <: IO implies Stream[Pure, A] <: Stream[IO, A] 
+// Pure <: IO implies Stream[Pure, A] <: Stream[IO, A]
 // this property is called covariance, and it's a general scala concept
-// now as I said, most of the time all of this is completely transparent to you, we took great care designing the api so that it Just Works™ most of the time. 
+// now as I said, most of the time all of this is completely transparent to you, we took great care designing the api so that it Just Works™ most of the time.
 // There are some cases where the compiler cannot quite tell that an operation with type Stream[Pure, A] needs to be used with type Stream[IO, A], and covary is a nudge to the compiler to give it the right type.
 // So Stream.emit(1, 2, 3): Stream[Pure, Int], Stream.emit(1, 2, 3).covary[IO]: Stream[IO, Int]

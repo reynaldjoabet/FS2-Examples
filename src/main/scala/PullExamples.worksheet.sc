@@ -134,19 +134,44 @@ SignallingRef[IO, Boolean](false).flatMap { signal =>
   s1.concurrently(s2).compile.toVector
 }
 
-
-Chunk(1,2,4,4).splitAt(1)
-
+Chunk(1, 2, 4, 4).splitAt(1)
 
 (Stream(1) ++ Stream(2, 3) ++ Stream(4, 5, 6)).chunks.toList
 
-Stream(1,2,3,4).evalMap(i => SyncIO(println(i))).take(2).compile.drain.unsafeRunSync()
+Stream(1, 2, 3, 4).evalMap(i => SyncIO(println(i))).take(2).compile.drain.unsafeRunSync()
 
-Stream(1,2,3,4).evalMapChunk(i => SyncIO(println(i))).take(2).compile.drain.unsafeRunSync()
-
+Stream(1, 2, 3, 4).evalMapChunk(i => SyncIO(println(i))).take(2).compile.drain.unsafeRunSync()
 
 import fs2.io._
 
 Stream(1).covary[IO].pull.uncons
 
+Stream.unfold(0)(s => Some(s, s + 10)).take(4).toList
 
+def sumPairs[F[_]]: Stream[F, Int] => Stream[F, Int] = { stream =>
+  def go(acc: Int, s: Stream[F, Int]): Pull[F, Int, Unit] = {
+    s.pull.uncons.flatMap {
+      case Some((chunk, tail)) =>
+        // If we have at least two elements, sum the first two and continue
+        if (chunk.size >= 2) {
+          val sum = chunk(0) + chunk(1) + acc
+          Pull.output1(sum) >> go(sum, tail.cons(chunk.drop(2)))
+        } else {
+          // Handle the case where there's one element left
+          Pull.output(chunk) >> Pull.done
+        }
+      case None                => Pull.done
+    }
+  }
+  go(0, stream).stream
+}
+
+val source: Stream[IO, Int] = Stream.emits(List(1, 2, 3, 4, 5))
+val result: Stream[IO, Int] = source.through(sumPairs)
+result.compile.toList.flatMap(res => IO(println(s"Result: $res"))).unsafeRunSync()
+
+List(4).tail.nonEmpty
+Stream(1, 2, 3).noneTerminate.toList
+
+Stream.constant(2, 10).debugChunks(x => x.toString())
+  .take(50).compile.toList
