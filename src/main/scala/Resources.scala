@@ -10,10 +10,9 @@ object Resources extends IOApp.Simple {
     val releaseReader = (reader: BufferedReader) =>
       IO.println("Releasing") *> IO.blocking(reader.close())
 
-    def readLines(reader: BufferedReader): Stream[IO, String] = {
+    def readLines(reader: BufferedReader): Stream[IO, String] =
       Stream.repeatEval(IO.blocking(reader.readLine())).takeWhile(_ != null)
       // Stream.raiseError[IO](new Exception("boom"))
-    }
 
     val readerResource: Resource[IO, BufferedReader] = Resource.make(acquireReader)(releaseReader)
 
