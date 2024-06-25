@@ -23,9 +23,8 @@ object Signals extends IOApp.Simple {
           case Some(_) => ???
         }
     )
-    def worker(signal: SignallingRef[IO, Boolean]): Stream[IO, Nothing] = {
+    def worker(signal: SignallingRef[IO, Boolean]): Stream[IO, Nothing] =
       Stream.repeatEval(IO.println("Working...")).metered(50.millis).interruptWhen(signal).drain
-    }
 
     Stream
       .eval(SignallingRef[IO, Boolean](false))
